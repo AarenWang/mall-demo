@@ -1,0 +1,47 @@
+# Mall Demo Backend - Local Configuration Example
+# Copy this file to application-local.yaml and update with your actual values
+
+server:
+  port: 18080
+
+spring:
+  application:
+    name: mall-demo-backend
+  datasource:
+    url: ${MALL_DB_URL:jdbc:mysql://127.0.0.1:3306/mall_demo?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${MALL_DB_USERNAME:root}
+    password: ${MALL_DB_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+mall:
+  demo:
+    # Frontend result page URL (for redirect after payment)
+    frontend-result-base-url: http://localhost:5174/result
+
+    # Multi-tenant merchant configuration (recommended)
+    # Each merchant has their own API credentials for calling payment gateway
+    merchants:
+      merchant_a:
+        apiKey: "replace_with_merchant_a_api_key"
+        apiSecret: "replace_with_merchant_a_api_secret"
+        name: "Merchant A"
+      merchant_b:
+        apiKey: "replace_with_merchant_b_api_key"
+        apiSecret: "replace_with_merchant_b_api_secret"
+        name: "Merchant B"
+
+    # Payment gateway configuration (legacy single-tenant, still supported)
+    payment:
+      base-url: http://localhost:8080
+      checkout-base-url: http://localhost:5173
+      connect-timeout-ms: 3000
+      read-timeout-ms: 5000
+
+    # Webhook signature verification secret
+    webhook:
+      secret: "replace_with_your_webhook_secret"
+
+    # Supported crypto options for payment creation
+    crypto-options:
+      - chain: ANVIL
+        asset: USDT

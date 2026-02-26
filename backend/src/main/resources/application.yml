@@ -1,0 +1,32 @@
+server:
+  port: 18080
+
+spring:
+  application:
+    name: mall-demo-backend
+  datasource:
+    url: ${MALL_DB_URL:jdbc:mysql://127.0.0.1:3306/mall_demo?useUnicode=true&characterEncoding=utf8&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${MALL_DB_USERNAME:root}
+    password: ${MALL_DB_PASSWORD:123456}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+mall:
+  demo:
+    frontend-result-base-url: ${MALL_FRONTEND_RESULT_BASE_URL:http://localhost:5174/result}
+    payment:
+      base-url: ${PAYMENT_GATEWAY_BASE_URL:http://localhost:8080}
+      api-key: ${PAYMENT_API_KEY:mk_5e294e94728644259934086ff3524660}
+      api-secret: ${PAYMENT_API_SECRET:6b68332a6886452f885e8260497afd78}
+      checkout-base-url: ${PAYMENT_CHECKOUT_BASE_URL:http://localhost:3003}
+      connect-timeout-ms: ${PAYMENT_CONNECT_TIMEOUT_MS:3000}
+      read-timeout-ms: ${PAYMENT_READ_TIMEOUT_MS:5000}
+    webhook:
+      secret: ${MALL_WEBHOOK_SECRET:18991769082121439563}
+    crypto-options:
+      - chain: ${MALL_DEMO_CHAIN:SOLANA}
+        asset: ${MALL_DEMO_ASSET:USDT}
+      - chain: ${MALL_DEMO_CHAIN:ANVIL}
+        asset: ${MALL_DEMO_ASSET:USDT}        
