@@ -85,6 +85,14 @@ const productCatalog: ProductItem[] = [
     fiatAmount: '99.00',
     fiatCurrency: 'USD',
     quantity: 1
+  },
+  {
+    id: 'fujifilm-gfx100-ii',
+    name: 'Fujifilm GFX100 II 中画幅无反相机',
+    image: 'https://i.ebayimg.com/images/g/LAgAAeSw44BoTZrC/s-l1600.webp',
+    fiatAmount: '11000.00',
+    fiatCurrency: 'USD',
+    quantity: 1
   }
 ]
 
