@@ -32,7 +32,7 @@ public class MerchantOriginFilter extends OncePerRequestFilter {
             merchantId = DEFAULT_MERCHANT_ID;
         }
         MallMerchantContext.setMerchantId(merchantId);
-        log.debug("Set mall merchant context: {}", merchantId);
+        log.info("Set mall merchant context: {}", merchantId);
 
         try {
             filterChain.doFilter(request, response);

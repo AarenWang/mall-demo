@@ -44,5 +44,6 @@ public class MallDemoProperties {
         private String apiKey;
         private String apiSecret;
         private String name;
+        private String frontendResultBaseUrl;
     }
 }

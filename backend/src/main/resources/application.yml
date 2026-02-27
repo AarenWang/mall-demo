@@ -16,17 +16,33 @@ spring:
 mall:
   demo:
     frontend-result-base-url: ${MALL_FRONTEND_RESULT_BASE_URL:http://localhost:5174/result}
+
+    # Multi-tenant merchant configuration
+    # Each merchant has their own API credentials for calling payment gateway
+    merchants:
+      merchant_a:
+        apiKey: ${MERCHANT_A_API_KEY:mk_5e294e94728644259934086ff3524660}
+        apiSecret: ${MERCHANT_A_API_SECRET:6b68332a6886452f885e8260497afd78}
+        name: ${MERCHANT_A_NAME:Merchant A}
+        frontendResultBaseUrl: ${MERCHANT_A_FRONTEND_RESULT_URL:http://localhost:5173/result}
+      merchant_b:
+        apiKey: ${MERCHANT_B_API_KEY:mk_b95ec651e60a4cb6a91ed5b606ffd747}
+        apiSecret: ${MERCHANT_B_API_SECRET:c1bb1802763c4837b37e66029f221684}
+        name: ${MERCHANT_B_NAME:SG MultiSign Mall}
+        frontendResultBaseUrl: ${MERCHANT_B_FRONTEND_RESULT_URL:http://localhost:5174/result}
+
+    # Payment gateway configuration (for backward compatibility)
     payment:
       base-url: ${PAYMENT_GATEWAY_BASE_URL:http://localhost:8080}
-      api-key: ${PAYMENT_API_KEY:mk_5e294e94728644259934086ff3524660}
-      api-secret: ${PAYMENT_API_SECRET:6b68332a6886452f885e8260497afd78}
       checkout-base-url: ${PAYMENT_CHECKOUT_BASE_URL:http://localhost:3003}
       connect-timeout-ms: ${PAYMENT_CONNECT_TIMEOUT_MS:3000}
       read-timeout-ms: ${PAYMENT_READ_TIMEOUT_MS:5000}
+
     webhook:
       secret: ${MALL_WEBHOOK_SECRET:18991769082121439563}
+
     crypto-options:
       - chain: ${MALL_DEMO_CHAIN:SOLANA}
         asset: ${MALL_DEMO_ASSET:USDT}
       - chain: ${MALL_DEMO_CHAIN:ANVIL}
-        asset: ${MALL_DEMO_ASSET:USDT}        
+        asset: ${MALL_DEMO_ASSET:USDT}

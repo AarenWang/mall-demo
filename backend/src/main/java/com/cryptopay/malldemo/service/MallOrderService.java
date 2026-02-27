@@ -101,7 +101,9 @@ public class MallOrderService {
 
     public List<MallOrderStatusResponse> listOrders(int limit) {
         int safeLimit = Math.max(1, Math.min(limit, 100));
-        return userOrderRepository.listRecentWithPayment(safeLimit).stream()
+        String merchantId = MallMerchantContext.getMerchantId();
+        log.info("listOrders: merchantId={}, limit={}", merchantId, safeLimit);
+        return userOrderRepository.listRecentWithPayment(merchantId, safeLimit).stream()
             .map(this::toStatusResponse)
             .toList();
     }
@@ -226,8 +228,20 @@ public class MallOrderService {
     }
 
     private String buildReturnUrl(String orderId) {
-        StringBuilder builder = new StringBuilder(properties.getFrontendResultBaseUrl());
-        String delimiter = properties.getFrontendResultBaseUrl().contains("?") ? "&" : "?";
+        String merchantId = MallMerchantContext.getMerchantId();
+        String baseUrl = null;
+
+        if (properties.getMerchants() != null && properties.getMerchants().containsKey(merchantId)) {
+            MallDemoProperties.MerchantCredentials creds = properties.getMerchants().get(merchantId);
+            baseUrl = creds.getFrontendResultBaseUrl();
+        }
+
+        if (baseUrl == null || baseUrl.isBlank()) {
+            baseUrl = properties.getFrontendResultBaseUrl();
+        }
+
+        StringBuilder builder = new StringBuilder(baseUrl);
+        String delimiter = baseUrl.contains("?") ? "&" : "?";
         builder.append(delimiter).append("orderId=").append(orderId);
         return builder.toString();
     }

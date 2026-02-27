@@ -25,10 +25,12 @@ mall:
         apiKey: "replace_with_merchant_a_api_key"
         apiSecret: "replace_with_merchant_a_api_secret"
         name: "Merchant A"
+        frontendResultBaseUrl: "http://localhost:5173/result"
       merchant_b:
         apiKey: "replace_with_merchant_b_api_key"
         apiSecret: "replace_with_merchant_b_api_secret"
         name: "Merchant B"
+        frontendResultBaseUrl: "http://localhost:5174/result"
 
     # Payment gateway configuration (legacy single-tenant, still supported)
     payment:

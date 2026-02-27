@@ -28,8 +28,6 @@ frontend/.vite/
 frontend/tsconfig.tsbuildinfo
 
 # Frontend environment (exclude actual files, keep examples)
-.env.frontend
-.env.frontend.local
-!frontend/.env.frontend.example
-!frontend/.env.frontend.merchantA
-!frontend/.env.frontend.merchantB
+frontend/.env
+frontend/.env.*
+!frontend/.env.example

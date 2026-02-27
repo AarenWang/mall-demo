@@ -8,10 +8,12 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
 
+@Slf4j
 @Repository
 public class UserOrderRepository {
     private final JdbcTemplate jdbcTemplate;
@@ -59,11 +61,13 @@ public class UserOrderRepository {
         );
     }
 
-    public List<MallOrder> listRecentWithPayment(int limit) {
+    public List<MallOrder> listRecentWithPayment(String merchantId, int limit) {
+        log.info("listRecentWithPayment: merchantId={}, limit={}", merchantId, limit);
         return jdbcTemplate.query(
             """
                 SELECT
                     u.order_id,
+                    u.merchant_id,
                     u.product_name,
                     u.product_image,
                     u.quantity,
@@ -76,6 +80,7 @@ public class UserOrderRepository {
                     p.checkout_url
                 FROM user_order u
                 LEFT JOIN pay_order p ON p.order_id = u.order_id
+                WHERE u.merchant_id = ?
                 ORDER BY u.created_at DESC
                 LIMIT ?
             """,
@@ -85,6 +90,7 @@ public class UserOrderRepository {
                 order.setCheckoutUrl(rs.getString("checkout_url"));
                 return order;
             },
+            merchantId,
             limit
         );
     }
