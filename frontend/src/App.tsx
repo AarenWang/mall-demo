@@ -39,6 +39,14 @@ interface ProductItem {
 
 const productCatalog: ProductItem[] = [
   {
+    id: 'chanel-25-handbag',
+    name: 'Chanel 25 Leather Handbag',
+    image: 'https://images.unsplash.com/photo-1548036328-c9fa89d128fa?auto=format&fit=crop&w=1200&q=80',
+    fiatAmount: '13726.00',
+    fiatCurrency: 'USD',
+    quantity: 1
+  },
+  {
     id: 'tesla-model-s',
     name: 'Tesla Model S',
     image: 'https://g.autoimg.cn/@img/car3/cardfs/product/g27/M00/76/24/400x300_q80_c42_autohomecar__ChtlxmUMX_CAfkiKABo7_YHchtU616.jpg.webp?format=webp',
