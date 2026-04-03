@@ -62,6 +62,8 @@ export function getOrderPaymentStatus(orderId: string) {
   )
 }
 
-export function listOrders(limit = 20) {
-  return request<OrderStatusResponse[]>(`/api/mall/orders?limit=${encodeURIComponent(String(limit))}`)
+export function listOrders(limit = 20, offset = 0) {
+  return request<OrderStatusResponse[]>(
+    `/api/mall/orders?limit=${encodeURIComponent(String(limit))}&offset=${encodeURIComponent(String(offset))}`
+  )
 }

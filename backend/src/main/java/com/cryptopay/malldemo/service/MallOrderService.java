@@ -48,12 +48,22 @@ public class MallOrderService {
         String orderId = generateOrderId();
         String idempotencyKey = "mall_" + orderId;
         String returnUrl = buildReturnUrl(orderId);
+        String cancelUrl = buildCancelUrl(orderId);
         String normalizedCurrency = request.getFiatCurrency().toUpperCase(Locale.ROOT);
         String merchantId = MallMerchantContext.getMerchantId();
+        String title = request.getProductName();
+        String description = buildDescription(orderId, request);
 
         PaymentGatewayClient.PaymentCreateResult payment =
-            paymentGatewayClient.createPayment(orderId, normalizedCurrency, request.getFiatAmount(),
-                returnUrl, idempotencyKey);
+            paymentGatewayClient.createPayment(
+                orderId,
+                normalizedCurrency,
+                request.getFiatAmount(),
+                title,
+                description,
+                returnUrl,
+                cancelUrl,
+                idempotencyKey);
 
         Instant now = Instant.now();
 
@@ -99,11 +109,12 @@ public class MallOrderService {
         return toStatusResponse(userOrder, payOrder);
     }
 
-    public List<MallOrderStatusResponse> listOrders(int limit) {
+    public List<MallOrderStatusResponse> listOrders(int limit, int offset) {
         int safeLimit = Math.max(1, Math.min(limit, 100));
+        int safeOffset = Math.max(0, offset);
         String merchantId = MallMerchantContext.getMerchantId();
-        log.info("listOrders: merchantId={}, limit={}", merchantId, safeLimit);
-        return userOrderRepository.listRecentWithPayment(merchantId, safeLimit).stream()
+        log.info("listOrders: merchantId={}, limit={}, offset={}", merchantId, safeLimit, safeOffset);
+        return userOrderRepository.listRecentWithPayment(merchantId, safeLimit, safeOffset).stream()
             .map(this::toStatusResponse)
             .toList();
     }
@@ -228,6 +239,14 @@ public class MallOrderService {
     }
 
     private String buildReturnUrl(String orderId) {
+        return appendOrderId(resolveResultBaseUrl(), orderId);
+    }
+
+    private String buildCancelUrl(String orderId) {
+        return appendOrderId(resolveResultBaseUrl(), orderId);
+    }
+
+    private String resolveResultBaseUrl() {
         String merchantId = MallMerchantContext.getMerchantId();
         String baseUrl = null;
 
@@ -239,11 +258,22 @@ public class MallOrderService {
         if (baseUrl == null || baseUrl.isBlank()) {
             baseUrl = properties.getFrontendResultBaseUrl();
         }
+        return baseUrl;
+    }
 
+    private String appendOrderId(String baseUrl, String orderId) {
         StringBuilder builder = new StringBuilder(baseUrl);
         String delimiter = baseUrl.contains("?") ? "&" : "?";
         builder.append(delimiter).append("orderId=").append(orderId);
         return builder.toString();
+    }
+
+    private String buildDescription(String orderId, CreateMallOrderRequest request) {
+        String productName = request.getProductName() == null || request.getProductName().isBlank()
+            ? "Mall Demo Product"
+            : request.getProductName().trim();
+        int quantity = request.getQuantity() == null || request.getQuantity() <= 0 ? 1 : request.getQuantity();
+        return productName + " x" + quantity + " (" + orderId + ")";
     }
 
     private MallOrderStatus mapWebhookStatus(String event, String status) {

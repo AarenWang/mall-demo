@@ -119,6 +119,125 @@ pnpm dev --host --port 5174
 - `GET /api/mall/orders/{orderId}/payment-status`
 - `POST /api/mall/webhooks/payment`
 
+## 商户接入说明
+
+mall-demo 当前演示的是“商户后端创建支付单，再跳转 checkout”的标准接入方式。
+
+### 1. 创建支付单
+
+商户后端调用支付网关：
+
+- 接口：`POST /api/v1/payments`
+- 认证：HMAC 签名请求头 `X-Api-Key` / `X-Signature` / `X-Timestamp` / `X-Nonce`
+- 幂等：建议传 `X-Idempotency-Key`
+
+mall-demo 当前实际发送的关键字段：
+
+- `orderId`
+- `amount`
+- `fiatCurrency`
+- `cryptoOptions`
+- `title`
+- `description`
+- `returnUrl`
+- `cancelUrl`
+
+示例请求体：
+
+```json
+{
+  "orderId": "MALL-20260403-ABC12345",
+  "amount": 99.90,
+  "fiatCurrency": "USD",
+  "title": "iPhone 15 Case",
+  "description": "iPhone 15 Case x1 (MALL-20260403-ABC12345)",
+  "returnUrl": "http://localhost:5174/result?orderId=MALL-20260403-ABC12345",
+  "cancelUrl": "http://localhost:5174/result?orderId=MALL-20260403-ABC12345",
+  "cryptoOptions": [
+    {
+      "chain": "ANVIL",
+      "asset": "USDT"
+    }
+  ]
+}
+```
+
+### 2. 新增字段的推荐语义
+
+- `title`
+  - 用于 checkout 主标题展示。
+  - 建议传商品名、订单标题或用户最容易识别的支付主题。
+- `description`
+  - 用于 checkout 副标题或补充说明。
+  - 建议传简短订单摘要，不要传完整订单明细。
+- `returnUrl`
+  - 支付成功后，checkout 返回商户页面的地址。
+  - 建议落到商户自己的结果页，再由商户后端按 `orderId` 回查订单状态。
+- `cancelUrl`
+  - 用户主动取消、关闭支付或需要回退时，checkout 返回商户页面的地址。
+  - 一期可以和 `returnUrl` 指向同一个结果页，由商户页面自行区分状态。
+
+### 3. 当前 mall-demo 的实现方式
+
+- `title = 商品名称`
+- `description = 商品名称 + 数量 + 订单号`
+- `returnUrl = MALL_FRONTEND_RESULT_BASE_URL + ?orderId=...`
+- `cancelUrl = MALL_FRONTEND_RESULT_BASE_URL + ?orderId=...`
+
+对应实现见：
+
+- [MallOrderService.java](backend/src/main/java/com/cryptopay/malldemo/service/MallOrderService.java)
+- [PaymentGatewayClient.java](backend/src/main/java/com/cryptopay/malldemo/service/PaymentGatewayClient.java)
+
+### 4. checkout 回跳参数约定
+
+checkout 回跳到商户前端后，建议商户优先依赖 `orderId` 查询自己的订单状态，而不是直接信任前端 query 参数中的支付状态。
+
+mall-demo 结果页当前兼容以下参数：
+
+- `orderId`
+- `paymentId`
+- `paymentNo`
+- `status`
+- `from=checkout`
+
+其中：
+
+- `paymentId` / `paymentNo` 主要用于结果页展示
+- 最终订单状态仍以商户后端查询结果或 webhook 入库结果为准
+
+### 5. webhook 是否需要配套修改
+
+这次 checkout UI 改版不要求商户同步修改 webhook 协议。
+
+mall-demo 当前仍通过：
+
+- `POST /api/mall/webhooks/payment`
+
+接收支付平台回调，并基于以下原则处理：
+
+- 先验签 raw body
+- 通过 `X-Webhook-Id` 做幂等
+- 同时兼容 `payment_id/paymentId/payment_no/paymentNo`
+- 同时兼容 `order_id/orderId`
+
+所以：
+
+- 创建支付接口建议尽快升级到 `title/description/returnUrl/cancelUrl`
+- webhook 逻辑可以保持现状，不需要因为这次 UI 改版而强制修改
+
+### 6. 关于 `callbackUrl`
+
+`callbackUrl` 属于旧接入习惯，mall-demo 已不再用它驱动 checkout 回跳。
+
+当前推荐方式是：
+
+- 用 `returnUrl` 表达支付成功后的商户回跳地址
+- 用 `cancelUrl` 表达支付取消或返回时的商户回跳地址
+- webhook 继续作为服务端最终状态同步通道
+
+这样可以避免商户再手工拼接 checkout URL 参数，也更贴近当前 checkout 的正式 contract。
+
 ## 当前实现说明
 
 - 数据库存储：MySQL + Flyway（`user_order` / `pay_order` / `webhook_log`）。

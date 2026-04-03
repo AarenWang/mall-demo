@@ -40,6 +40,7 @@ mall:
 
     webhook:
       secret: ${MALL_WEBHOOK_SECRET:18991769082121439563}
+      max-skew-seconds: ${MALL_WEBHOOK_MAX_SKEW_SECONDS:300}
 
     crypto-options:
       - chain: ${MALL_DEMO_CHAIN:SOLANA}

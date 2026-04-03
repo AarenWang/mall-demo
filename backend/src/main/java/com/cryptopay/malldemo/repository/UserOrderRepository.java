@@ -61,8 +61,8 @@ public class UserOrderRepository {
         );
     }
 
-    public List<MallOrder> listRecentWithPayment(String merchantId, int limit) {
-        log.info("listRecentWithPayment: merchantId={}, limit={}", merchantId, limit);
+    public List<MallOrder> listRecentWithPayment(String merchantId, int limit, int offset) {
+        log.info("listRecentWithPayment: merchantId={}, limit={}, offset={}", merchantId, limit, offset);
         return jdbcTemplate.query(
             """
                 SELECT
@@ -82,7 +82,7 @@ public class UserOrderRepository {
                 LEFT JOIN pay_order p ON p.order_id = u.order_id
                 WHERE u.merchant_id = ?
                 ORDER BY u.created_at DESC
-                LIMIT ?
+                LIMIT ? OFFSET ?
             """,
             (rs, rowNum) -> {
                 MallOrder order = mapRow(rs, rowNum);
@@ -91,7 +91,8 @@ public class UserOrderRepository {
                 return order;
             },
             merchantId,
-            limit
+            limit,
+            offset
         );
     }
 

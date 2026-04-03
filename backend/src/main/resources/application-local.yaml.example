@@ -42,6 +42,7 @@ mall:
     # Webhook signature verification secret
     webhook:
       secret: "replace_with_your_webhook_secret"
+      max-skew-seconds: 300
 
     # Supported crypto options for payment creation
     crypto-options:

@@ -25,8 +25,9 @@ public class MallOrderController {
     }
 
     @GetMapping
-    public ApiResponse<List<MallOrderStatusResponse>> listOrders(@RequestParam(defaultValue = "20") Integer limit) {
-        return ApiResponse.ok(mallOrderService.listOrders(limit == null ? 20 : limit));
+    public ApiResponse<List<MallOrderStatusResponse>> listOrders(@RequestParam(defaultValue = "20") Integer limit,
+                                                                    @RequestParam(defaultValue = "0") Integer offset) {
+        return ApiResponse.ok(mallOrderService.listOrders(limit == null ? 20 : limit, offset == null ? 0 : offset));
     }
 
     @PostMapping

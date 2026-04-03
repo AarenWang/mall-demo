@@ -49,11 +49,6 @@ public class MallWebhookService {
             throw new BizException(40003, "Missing webhook signature");
         }
 
-        String expected = HmacUtil.hmacSha256Hex(properties.getWebhook().getSecret(), rawBody);
-        if (!expected.equalsIgnoreCase(signature)) {
-            throw new BizException(40003, "Webhook signature verification failed");
-        }
-
         JsonNode payload;
         try {
             payload = objectMapper.readTree(rawBody);
@@ -61,10 +56,12 @@ public class MallWebhookService {
             throw new BizException(40001, "Invalid webhook payload");
         }
 
+        String webhookId = resolveWebhookId(headers, payload, rawBody);
+        verifySignature(rawBody, headers, webhookId, signature);
+
         // Note: MerchantOriginFilter automatically extracts X-Merchant-Id from webhook headers
         // and sets MallMerchantContext. No manual resolution needed.
 
-        String webhookId = resolveWebhookId(headers, payload, rawBody);
         WebhookLog webhookLog = buildWebhookLog(webhookId, signature, rawBody, headers, payload);
         boolean inserted = webhookLogRepository.insertIfAbsent(webhookLog);
         if (!inserted) {
@@ -116,6 +113,44 @@ public class MallWebhookService {
         return "body-" + HmacUtil.hmacSha256Hex("mall-demo", rawBody).substring(0, 32);
     }
 
+    private void verifySignature(String rawBody, HttpHeaders headers, String webhookId, String signature) {
+        String signatureVersion = headers.getFirst("X-Signature-Version");
+        if (!"v2".equalsIgnoreCase(signatureVersion)) {
+            throw new BizException(40003, "Unsupported webhook signature version");
+        }
+        String timestamp = headers.getFirst("X-Timestamp");
+        long ts = parseTimestampSeconds(timestamp);
+        if (ts <= 0L) {
+            throw new BizException(40003, "Missing webhook timestamp");
+        }
+        long now = Instant.now().getEpochSecond();
+        if (Math.abs(now - ts) > Math.max(1L, properties.getWebhook().getMaxSkewSeconds())) {
+            throw new BizException(40003, "Webhook timestamp expired");
+        }
+        if (webhookId == null || webhookId.isBlank()) {
+            throw new BizException(40003, "Missing webhook id");
+        }
+        String expected = HmacUtil.hmacSha256Hex(properties.getWebhook().getSecret(), timestamp, webhookId, rawBody);
+        if (!HmacUtil.secureEquals(expected, signature)) {
+            throw new BizException(40003, "Webhook signature verification failed");
+        }
+    }
+
+    private long parseTimestampSeconds(String timestamp) {
+        if (timestamp == null || timestamp.isBlank()) {
+            return -1L;
+        }
+        try {
+            long raw = Long.parseLong(timestamp.trim());
+            if (raw > 1_000_000_000_000L) {
+                return raw / 1000L;
+            }
+            return raw;
+        } catch (NumberFormatException ex) {
+            return -1L;
+        }
+    }
+
     private Integer parseInt(String value) {
         if (value == null || value.isBlank()) {
             return 0;
@@ -131,6 +166,7 @@ public class MallWebhookService {
         Map<String, Object> values = new LinkedHashMap<>();
         values.put("X-Webhook-Id", headers.getFirst("X-Webhook-Id"));
         values.put("X-Timestamp", headers.getFirst("X-Timestamp"));
+        values.put("X-Signature-Version", headers.getFirst("X-Signature-Version"));
         values.put("X-Retry-Count", headers.getFirst("X-Retry-Count"));
         values.put("Content-Type", headers.getFirst("Content-Type"));
         try {

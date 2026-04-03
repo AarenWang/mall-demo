@@ -31,6 +31,7 @@ public class MallDemoProperties {
     @Data
     public static class Webhook {
         private String secret = "replace_me";
+        private long maxSkewSeconds = 300L;
     }
 
     @Data

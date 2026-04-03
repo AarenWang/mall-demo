@@ -13,12 +13,10 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.net.URI;
-import java.net.URLEncoder;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
@@ -37,16 +35,32 @@ public class PaymentGatewayClient {
             .build();
     }
 
-    public PaymentCreateResult createPayment(String orderId, String fiatCurrency, BigDecimal fiatAmount,
-                                             String callbackUrl, String idempotencyKey) {
+    public PaymentCreateResult createPayment(String orderId,
+                                             String fiatCurrency,
+                                             BigDecimal fiatAmount,
+                                             String title,
+                                             String description,
+                                             String returnUrl,
+                                             String cancelUrl,
+                                             String idempotencyKey) {
         String path = "/api/v1/payments";
         ObjectNode body = objectMapper.createObjectNode();
         body.put("orderId", orderId);
         body.put("amount", fiatAmount);
         body.put("fiatCurrency", fiatCurrency);
-        body.put("description", "Mall demo order " + orderId);
+        if (title != null && !title.isBlank()) {
+            body.put("title", title);
+        }
+        if (description != null && !description.isBlank()) {
+            body.put("description", description);
+        }
         body.put("expiresIn", 900);
-        body.put("callbackUrl", callbackUrl);
+        if (returnUrl != null && !returnUrl.isBlank()) {
+            body.put("returnUrl", returnUrl);
+        }
+        if (cancelUrl != null && !cancelUrl.isBlank()) {
+            body.put("cancelUrl", cancelUrl);
+        }
 
         ArrayNode optionsNode = body.putArray("cryptoOptions");
         List<CryptoOption> cryptoOptions = properties.getCryptoOptions();
@@ -76,7 +90,7 @@ public class PaymentGatewayClient {
         }
 
         String status = text(data, "status");
-        String checkoutUrl = buildCheckoutUrl(paymentId, callbackUrl);
+        String checkoutUrl = buildCheckoutUrl(paymentId);
 
         PaymentCreateResult result = new PaymentCreateResult();
         result.setPaymentId(paymentId);
@@ -213,17 +227,12 @@ public class PaymentGatewayClient {
         return null;
     }
 
-    private String buildCheckoutUrl(String paymentId, String returnUrl) {
+    private String buildCheckoutUrl(String paymentId) {
         String base = properties.getPayment().getCheckoutBaseUrl();
         if (base.endsWith("/")) {
             base = base.substring(0, base.length() - 1);
         }
-        StringBuilder builder = new StringBuilder(base).append("/pay/").append(paymentId);
-        if (returnUrl != null && !returnUrl.isBlank()) {
-            builder.append("?returnUrl=")
-                .append(URLEncoder.encode(returnUrl, StandardCharsets.UTF_8));
-        }
-        return builder.toString();
+        return new StringBuilder(base).append("/pay/").append(paymentId).toString();
     }
 
     public static class PaymentCreateResult {

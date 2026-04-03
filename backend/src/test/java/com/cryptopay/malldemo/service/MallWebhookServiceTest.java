@@ -34,6 +34,7 @@ class MallWebhookServiceTest {
     void setUp() {
         MallDemoProperties properties = new MallDemoProperties();
         properties.getWebhook().setSecret("test-secret");
+        properties.getWebhook().setMaxSkewSeconds(300L);
         mallWebhookService = new MallWebhookService(
             properties,
             mallOrderService,
@@ -59,7 +60,10 @@ class MallWebhookServiceTest {
         String rawBody = "{\"id\":\"evt_1\",\"event\":\"payment.paid\",\"order_id\":\"M20260207100001\",\"payment_id\":\"P-1\"}";
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Webhook-Id", "wh_123");
-        headers.set("X-Signature", HmacUtil.hmacSha256Hex("test-secret", rawBody));
+        String timestamp = String.valueOf(java.time.Instant.now().getEpochSecond());
+        headers.set("X-Timestamp", timestamp);
+        headers.set("X-Signature-Version", "v2");
+        headers.set("X-Signature", HmacUtil.hmacSha256Hex("test-secret", timestamp, "wh_123", rawBody));
 
         when(webhookLogRepository.insertIfAbsent(any(WebhookLog.class))).thenReturn(true);
 
@@ -74,7 +78,10 @@ class MallWebhookServiceTest {
         String rawBody = "{\"id\":\"evt_2\",\"event\":\"payment.expired\",\"order_id\":\"M20260207100002\",\"payment_id\":\"P-2\"}";
         HttpHeaders headers = new HttpHeaders();
         headers.set("X-Webhook-Id", "wh_duplicated");
-        headers.set("X-Signature", HmacUtil.hmacSha256Hex("test-secret", rawBody));
+        String timestamp = String.valueOf(java.time.Instant.now().getEpochSecond());
+        headers.set("X-Timestamp", timestamp);
+        headers.set("X-Signature-Version", "v2");
+        headers.set("X-Signature", HmacUtil.hmacSha256Hex("test-secret", timestamp, "wh_duplicated", rawBody));
 
         when(webhookLogRepository.insertIfAbsent(any(WebhookLog.class))).thenReturn(false);
 
@@ -82,5 +89,36 @@ class MallWebhookServiceTest {
 
         verify(mallOrderService, never()).handleWebhook(anyString(), any());
         verify(webhookLogRepository, never()).markProcessed(anyString(), any());
+    }
+
+    @Test
+    void shouldRejectWebhookWhenTimestampExpiredForV2Signature() {
+        String rawBody = "{\"id\":\"evt_3\",\"event\":\"payment.paid\",\"order_id\":\"M20260207100003\"}";
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Webhook-Id", "wh_expired");
+        String timestamp = String.valueOf(java.time.Instant.now().minusSeconds(1000).getEpochSecond());
+        headers.set("X-Timestamp", timestamp);
+        headers.set("X-Signature-Version", "v2");
+        headers.set("X-Signature", HmacUtil.hmacSha256Hex("test-secret", timestamp, "wh_expired", rawBody));
+
+        BizException ex = assertThrows(BizException.class,
+            () -> mallWebhookService.process(rawBody, headers));
+
+        assertEquals(40003, ex.getCode());
+        verify(mallOrderService, never()).handleWebhook(anyString(), any());
+    }
+
+    @Test
+    void shouldRejectWebhookWhenSignatureVersionMissing() {
+        String rawBody = "{\"id\":\"evt_legacy\",\"event\":\"payment.paid\",\"order_id\":\"M20260207100004\"}";
+        HttpHeaders headers = new HttpHeaders();
+        headers.set("X-Webhook-Id", "wh_legacy");
+        headers.set("X-Signature", HmacUtil.hmacSha256Hex("test-secret", rawBody));
+
+        BizException ex = assertThrows(BizException.class,
+            () -> mallWebhookService.process(rawBody, headers));
+
+        assertEquals(40003, ex.getCode());
+        verify(mallOrderService, never()).handleWebhook(anyString(), any());
     }
 }

@@ -384,19 +384,24 @@ function PayPage() {
 function OrdersPage() {
   const [orders, setOrders] = useState<OrderStatusResponse[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const pageSize = 20
 
   useEffect(() => {
     let active = true
     setLoading(true)
     setError(null)
+    setHasMore(true)
 
-    listOrders(50)
+    listOrders(pageSize, 0)
       .then((rows) => {
         if (!active) {
           return
         }
         setOrders(rows)
+        setHasMore(rows.length === pageSize)
       })
       .catch((err) => {
         if (!active) {
@@ -415,6 +420,26 @@ function OrdersPage() {
     }
   }, [])
 
+  const handleLoadMore = () => {
+    if (loadingMore || !hasMore) {
+      return
+    }
+    setLoadingMore(true)
+    setError(null)
+
+    listOrders(pageSize, orders.length)
+      .then((rows) => {
+        setOrders((prev) => [...prev, ...rows])
+        setHasMore(rows.length === pageSize)
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : '查询订单列表失败')
+      })
+      .finally(() => {
+        setLoadingMore(false)
+      })
+  }
+
   return (
     <Shell title="我的订单" subtitle="最近订单列表" activeNav="orders">
       {loading ? <p>加载订单中...</p> : null}
@@ -423,35 +448,52 @@ function OrdersPage() {
       {!loading && !orders.length ? <div className="order-created">暂无订单，请先下单</div> : null}
 
       {orders.length ? (
-        <div className="orders-table">
-          <div className="orders-head">
-            <span>订单号</span>
-            <span>商品</span>
-            <span>金额</span>
-            <span>状态</span>
-            <span>更新时间</span>
-          </div>
-          {orders.map((item) => (
-            <div className="orders-row" key={item.orderId}>
-              <button
-                type="button"
-                className="link-button"
-                onClick={() => (window.location.href = `/orders/${encodeURIComponent(item.orderId)}`)}
-              >
-                {item.orderId}
-              </button>
-              <span className="orders-product-cell">
-                {item.productImage && (
-                  <img src={item.productImage} alt={item.productName} className="orders-product-image" />
-                )}
-                {item.productName}
-              </span>
-              <span>{formatMoney(item.fiatAmount, item.fiatCurrency)}</span>
-              <span>{statusText[item.status] || item.status}</span>
-              <span>{new Date(item.lastUpdatedAt).toLocaleString()}</span>
+        <>
+          <div className="orders-table">
+            <div className="orders-head">
+              <span>订单号</span>
+              <span>商品</span>
+              <span>金额</span>
+              <span>状态</span>
+              <span>更新时间</span>
             </div>
-          ))}
-        </div>
+            {orders.map((item) => (
+              <div className="orders-row" key={item.orderId}>
+                <button
+                  type="button"
+                  className="link-button"
+                  onClick={() => (window.location.href = `/orders/${encodeURIComponent(item.orderId)}`)}
+                >
+                  {item.orderId}
+                </button>
+                <span className="orders-product-cell">
+                  {item.productImage && (
+                    <img src={item.productImage} alt={item.productName} className="orders-product-image" />
+                  )}
+                  {item.productName}
+                </span>
+                <span>{formatMoney(item.fiatAmount, item.fiatCurrency)}</span>
+                <span>{statusText[item.status] || item.status}</span>
+                <span>{new Date(item.lastUpdatedAt).toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+          {hasMore ? (
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={handleLoadMore}
+              disabled={loadingMore}
+              style={{ marginTop: '16px', width: '100%' }}
+            >
+              {loadingMore ? '加载中...' : '加载更多'}
+            </button>
+          ) : orders.length >= pageSize ? (
+            <div style={{ marginTop: '16px', textAlign: 'center', color: '#666' }}>
+              已加载全部订单
+            </div>
+          ) : null}
+        </>
       ) : null}
     </Shell>
   )
@@ -564,7 +606,7 @@ function OrderDetailPage() {
 function ResultPage() {
   const query = useMemo(() => new URLSearchParams(window.location.search), [])
   const orderId = query.get('orderId')
-  const paymentIdFromQuery = query.get('paymentId')
+  const paymentIdFromQuery = query.get('paymentId') || query.get('paymentNo')
   const statusFromQuery = query.get('status')
   const fromCheckout = query.get('from') === 'checkout'
   const [order, setOrder] = useState<OrderStatusResponse | null>(null)
